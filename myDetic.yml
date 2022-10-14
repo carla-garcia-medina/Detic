@@ -1,0 +1,4 @@
+name: myDetic
+channels:
+  - defaults
+prefix: /home/carla/anaconda3/envs/myDetic
