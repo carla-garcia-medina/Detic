@@ -1,5 +1,6 @@
 # Copyright (c) Facebook, Inc. and its affiliates.
 import argparse
+from email import message
 import glob
 import multiprocessing as mp
 from xxlimited import Str
@@ -54,7 +55,7 @@ def setup_cfg(args):
 
 def get_parser():
     input_dir = 'minihack_datasets/MiniHack-River-Monster-v0/dataset_0/'
-    output_dir = 'outputs'
+    output_dir = 'outputs/'
 
     parser = argparse.ArgumentParser(description="Detectron2 demo for builtin configs")
     parser.add_argument(
@@ -90,7 +91,7 @@ def get_parser():
         default="",
         help="",
     )
-    parser.add_argument("--pred_all_class", action='store_true')
+    parser.add_argument("--pred_all_class", default='True',action='store_true')
     parser.add_argument(
         "--confidence-threshold",
         type=float,
@@ -111,38 +112,48 @@ def screen_description_experiment(args):
     vocab = set([])
 
     for counter in range(len(os.listdir(args.input+'pixels/'))):
-        print(np.load('{}screen_descriptions/{}.npy'.format(args.input, counter)))
-        for row in np.load('{}messages/{}.npy'.format(args.input, counter)):
-            print(row)
-            print(''.join([chr(hex) for hex in row if hex>0]))
+        for row in np.load('{}screen_descriptions/{}.npy'.format(args.input, counter)).reshape(1659, 80):
+            description = ''.join([chr(hex) for hex in row if hex>0])
+            if len(description) > 0:
+                vocab.add(description)
         
+    args.vocabulary = 'custom'
+    args.custom_vocabulary = ','.join(vocab)
     cfg = setup_cfg(args)
     demo = VisualizationDemo(cfg, args)
     
     for counter in range(len(os.listdir(args.input+'pixels/'))):
-        print(''.join([chr(hex) for hex in np.load('{}messages/{}.npy'.format(args.input, counter)) if hex>0]))
         img_path = '{}.jpg'.format(counter)
         
-        img = read_image(args.input+'pixels/'+img_path, format="BGR")
-        start_time = time.time()
+        img = read_image(args.input+'pixels/' + img_path, format="BGR")
         predictions, visualized_output = demo.run_on_image(img)
         out_filename = os.path.join(out_dir, os.path.basename(img_path))
+        print(out_filename)
+        print(predictions)
         visualized_output.save(out_filename)
+        print(counter)
 
 def message_experiment(args):
     out_dir = os.path.join(args.output, "message_expts/")
     os.mkdir(out_dir)
+    vocab = set([])
 
+    for counter in range(len(os.listdir(args.input+'pixels/'))):
+        message = ''.join([chr(hex) for hex in np.load('{}messages/{}.npy'.format(args.input, counter)) if hex>0])
+        if len(message) > 0:
+            vocab.add(message)
+
+    args.vocabulary = 'custom'
+    args.custom_vocabulary = ','.join(vocab)
     cfg = setup_cfg(args)
     demo = VisualizationDemo(cfg, args)
 
     for counter in range(len(os.listdir(args.input+'pixels/'))):
-        print(''.join([chr(hex) for hex in np.load('{}messages/{}.npy'.format(args.input, counter)) if hex>0]))
         img_path = '{}.jpg'.format(counter)
         
-        img = read_image(args.input+'pixels/'+img_path, format="BGR")
-        start_time = time.time()
+        img = read_image(args.input+'pixels/' + img_path, format="BGR")
         predictions, visualized_output = demo.run_on_image(img)
+        print(predictions)
         out_filename = os.path.join(out_dir, os.path.basename(img_path))
         visualized_output.save(out_filename)
 
@@ -158,6 +169,7 @@ def main():
     os.makedirs(args.output)
 
     screen_description_experiment(args)
+    message_experiment(args)
 
 if __name__ == '__main__':
     main()
